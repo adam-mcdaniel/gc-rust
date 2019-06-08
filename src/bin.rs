@@ -1,86 +1,68 @@
-use std::alloc::{alloc, dealloc, Layout};
-use std::clone::Clone;
+use std::fmt::Display;
+use gc_rust::{Garbage, collect, check_heap};
 
-#[derive(Clone, Copy)]
-struct Ptr<T> {
-    layout: Layout,
-    mem: Option<*mut T>
+
+fn println<T>(mut a: Garbage<T>) where T: Display {
+    unsafe {
+        println!("{}", *a.decay());
+    }
+    collect!(a);
 }
 
-impl<T> Ptr<T> where T: Clone {
-    pub fn new(t: T) -> Self {
-        unsafe {
-            let layout = Layout::new::<T>();
-            let mem = alloc(layout) as *mut T;
-            *mem = t;
-            Self {
-                layout, mem: Some(mem)
-            }
-        }
-    }
 
-    pub fn set(&self, t: T) {
-        unsafe {
-            match self.mem {
-                Some(mem) => *mem = t,
-                None => {
-                    panic!("TRIED TO SET DEALLOCATED MEM, EVERYTHING IS BROKEN");
-                }
-            }
-        }
-    }
-
-    pub fn get(&self) -> T {
-        unsafe {
-            match self.mem {
-                Some(mem) => (*mem).clone(),
-                None => {
-                    panic!("TRIED TO GET DEALLOCATED MEM, EVERYTHING IS BROKEN");
-                }
-            }
-        }
-    }
-
-    pub fn dealloc(&self) {
-        unsafe {
-            match self.mem {
-                Some(mem) => dealloc(mem as *mut u8, self.layout),
-                None => {
-                    panic!("DEALLOCATED MEM TWICE, EVERYTHING IS BROKEN");
-                }
-            }
-        }
-    }
+fn add(mut a: Garbage<i32>, mut b: Garbage<i32>) -> Garbage<i32> {
+    let result = a.unwrap() + b.unwrap();
+    collect!(a, b);
+    return Garbage::new(result);
 }
-
-// let layout = Layout::new::<u16>();
-
-
-#[derive(Copy)]
-struct Gc<'a, T> {
-    data: &'a T,
-    count: Ptr<usize>
-}
-
-impl<'a, T> Clone for Gc<'a, T> {
-    fn clone(&self) -> Self {
-        let count = self.count.get();
-        self.count.set(count + 1);
-        Self::new(self.data.clone())
-    }
-}
-
-impl<'a, T> Gc<'a, T> {
-    pub fn new(data: &'a T) -> Self {
-        Self {
-            data: data,
-            count: Ptr::new(0 as usize)
-        }
-    }
-}
-
 
 
 fn main() {
+    // let mut a = Garbage::new(27);
+    // let mut b = Garbage::new(5);
+    // print!("a: ");
+    // println(a.get());
+    // print!("b: ");
+    // println(b.get());
 
+    // let mut c = add(a.get(), b.get());
+    // print!("c: ");
+    // println(c.get());
+    // // unsafe {
+    // //     println(a.weak_get());
+    // // }
+    // collect!(a, b, c);
+    fn inc(mut i: Garbage<i32>) -> Garbage<i32> {
+        let result = i.unwrap() + 1;
+        collect!(i);
+        return Garbage::new(result);
+    }
+
+    fn dec(mut i: Garbage<i32>) -> Garbage<i32> {
+        let result = i.unwrap() - 1;
+        collect!(i);
+        return Garbage::new(result);
+    }
+
+
+    let mut inc_gc: Garbage<fn(Garbage<i32>) -> Garbage<i32>> = Garbage::new(inc);
+    let mut dec_gc: Garbage<fn(Garbage<i32>) -> Garbage<i32>> = Garbage::new(dec);
+    // let mut incinc: Garbage<Arc<dyn Fn(Garbage<i32>) -> Garbage<i32>>>;
+
+
+
+    let mut a = Garbage::new(2);
+    let mut b = Garbage::new(5);
+
+    println((inc_gc.unwrap())( a.get() ));
+    // println((inc_gc.unwrap())(a.get()));
+    println(
+        add(
+            a.get(), b.get()
+        )
+    );
+
+    collect!(a, b, inc_gc, dec_gc);
+
+    check_heap();
 }
