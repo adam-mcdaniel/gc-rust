@@ -1,0 +1,11 @@
+[package]
+name = "gc-rust"
+version = "0.1.0"
+authors = ["adam-mcdaniel <adam.mcdaniel17@gmail.com>"]
+edition = "2018"
+
+[[bin]]
+path = "src/bin.rs"
+name = "bin"
+
+[dependencies]
